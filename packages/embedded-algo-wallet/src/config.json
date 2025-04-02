@@ -1,0 +1,24 @@
+{
+  "localnet": {
+    "algod": {
+      "url": "http://localhost",
+      "port": 4001,
+      "token": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  },
+  "testnet": {
+    "algod": {
+      "url": "https://testnet-api.algonode.cloud"
+    }
+  },
+  "mainnet": {
+    "algod": {
+      "url": "https://mainnet-api.algonode.cloud"
+    }
+  },
+  "voimain": {
+    "algod": {
+      "url": "https://mainnet-api.voi.nodely.dev"
+    }
+  }
+}

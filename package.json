@@ -1,0 +1,13 @@
+{
+  "name": "embedded-algo-wallet",
+  "packageManager": "pnpm@10.6.2",
+  "type": "module",
+  "scripts": {
+    "build": "pnpm build:packages && pnpm build:examples",
+    "build:packages": "pnpm -r --filter \"./packages/*\" build",
+    "build:examples": "pnpm -r --filter \"./examples/*\" build",
+    "watch": "pnpm -r --filter \"./packages/*\" --parallel start",
+    "dev": "pnpm watch",
+    "example:vue": "pnpm --filter \"./examples/vue-ts\" dev"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "name": "embedded-algo-wallet",
+  "version": "0.0.0",
+  "main": "./dist/main.cjs.js",
+  "module": "./dist/main.esm.js",
+  "types": "./dist/main.d.ts",
+  "scripts": {
+    "build": "rollup --config",
+    "start": "rollup --config --watch"
+  },
+  "author": "Andrew Funk",
+  "license": "ISC",
+  "peerDependencies": {
+    "algosdk": "^3.2.0",
+    "crypto-js": "^4.2.0",
+    "idb": "^8.0.2"
+  },
+  "devDependencies": {
+    "@rollup/plugin-json": "^6.1.0",
+    "@rollup/plugin-typescript": "^12.1.2",
+    "@types/crypto-js": "^4.2.2",
+    "@types/node": "^22.13.13",
+    "rollup": "^4.37.0",
+    "tslib": "^2.8.1",
+    "typescript": "^5.8.2"
+  }
+}
