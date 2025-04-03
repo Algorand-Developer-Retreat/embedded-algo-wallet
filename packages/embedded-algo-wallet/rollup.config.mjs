@@ -15,5 +15,5 @@ export default {
     },
   ],
   plugins: [typescript(), json()],
-  external: ["algosdk"],
+  external: ["algosdk", "crypto-js", "idb"],
 };
