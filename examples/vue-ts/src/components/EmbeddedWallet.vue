@@ -64,16 +64,16 @@
     <v-row>
       <v-col>
         <v-btn
-          text="Get Token"
-          @click="getToken()"
-          :disabled="!wallet.acct || !!token"
+          text="Unlock"
+          @click="unlock()"
+          :disabled="!wallet.acct || !wallet.isLocked()"
         />
       </v-col>
       <v-col>
         <v-btn
           text="Send Test Txn"
           @click="testTxn()"
-          :disabled="!token || wallet.acctInfo.amount < 101000n"
+          :disabled="wallet.isLocked() || wallet.acctInfo?.amount < 101000n"
         />
       </v-col>
     </v-row>
@@ -123,7 +123,6 @@ const form = ref();
 const password = ref();
 const showPass = ref(false);
 const passAction = ref();
-const token = ref();
 const mnemonic = ref();
 const mnemonicAcct = computed(() => {
   if (!mnemonic.value) return undefined;
@@ -136,8 +135,6 @@ const mnemonicAcct = computed(() => {
   return val;
 });
 const mnemonicHint = computed(() => mnemonicAcct.value?.addr.toString());
-const importMnemonic =
-  "require fame scissors planet song drum library cancel flavor nephew sausage badge myth occur slam copy toss thought steak gorilla horse wage dragon abandon voice";
 
 const wallet = reactive(new Wallet("testnet"));
 
@@ -161,10 +158,10 @@ async function exportWallet() {
 }
 
 function clearWallet() {
-  token.value = wallet.clearAcct();
+  wallet.clearAcct();
 }
 
-async function getToken() {
+async function unlock() {
   showPass.value = true;
   passAction.value = "token";
 }
@@ -177,11 +174,11 @@ async function handlePassword() {
   try {
     switch (passAction.value) {
       case "new": {
-        token.value = await wallet.createAcct(password.value);
+        await wallet.createAcct(password.value);
         break;
       }
       case "import": {
-        token.value = await wallet.createAcct(password.value, mnemonic.value);
+        await wallet.createAcct(password.value, mnemonic.value);
         mnemonic.value = undefined;
         break;
       }
@@ -190,7 +187,7 @@ async function handlePassword() {
         break;
       }
       case "token": {
-        token.value = await wallet.getToken(password.value);
+        await wallet.unlock(password.value);
         break;
       }
     }
@@ -208,14 +205,12 @@ async function testTxn() {
     amount: 0,
     suggestedParams,
   });
-  const signedTxns = await wallet.signTxn(token.value, [txn]);
-  await wallet.algod
-    .sendRawTransaction(signedTxns.map((stxn) => stxn.blob))
-    .do();
+  const signedTxns = await wallet.txnSigner([txn], [0]);
+  await wallet.algod.sendRawTransaction(signedTxns).do();
   console.log("Waiting for confirmation...");
   const resp = await algosdk.waitForConfirmation(
     wallet.algod as algosdk.Algodv2,
-    signedTxns[0].txID,
+    txn.txID(),
     4
   );
   console.log("Confirmed in Round: " + resp.confirmedRound);

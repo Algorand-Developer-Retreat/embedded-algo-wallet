@@ -1,6 +1,6 @@
 {
   "name": "embedded-algo-wallet",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "main": "./dist/main.cjs.js",
   "module": "./dist/main.esm.js",
   "types": "./dist/main.d.ts",

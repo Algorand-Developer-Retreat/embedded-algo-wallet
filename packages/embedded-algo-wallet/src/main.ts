@@ -21,6 +21,7 @@ export default class Wallet {
   acct: AlgoAccount;
   acctInfo: algosdk.modelsv2.Account;
   algod: algosdk.Algodv2;
+  private token: string;
 
   constructor(env: "localnet" | "testnet" | "mainnet" | "voimain" = "mainnet") {
     const config: Config = configs[env];
@@ -29,6 +30,10 @@ export default class Wallet {
       config.algod.url,
       config.algod?.port
     );
+  }
+
+  isLocked() {
+    return !this.token;
   }
 
   async getAcctInfo() {
@@ -53,27 +58,31 @@ Account already exists. Overwrite?`)
       : algosdk.generateAccount();
     const saltArray = crypto.getRandomValues(new Uint8Array(12));
     const salt = Buffer.from(saltArray).toString("base64");
-    const token = await hashPassword(password);
+    this.token = await hashPassword(password + salt);
     const sk = CryptoJS.AES.encrypt(
       Buffer.from(acct.sk).toString("base64"),
-      token + salt
+      this.token
     ).toString();
     this.acct = { addr: acct.addr.toString(), sk, salt };
     await set("keyval", "acct", JSON.parse(JSON.stringify(this.acct)));
     await this.getAcctInfo();
-    return token;
   }
 
-  async getToken(password: string) {
-    const token = await hashPassword(password);
-    const decKey = CryptoJS.AES.decrypt(this.acct.sk, token + this.acct.salt);
-    if (decKey.sigBytes !== 88) throw Error("Incorrect Password");
-    return token;
+  async unlock(password: string) {
+    const token = await hashPassword(password + this.acct.salt);
+    const decKey = CryptoJS.AES.decrypt(this.acct.sk, token);
+    if (decKey.sigBytes !== 88) {
+      throw Error("Incorrect Password");
+    }
+    this.token = token;
   }
 
-  async decryptKey(token: string) {
-    const decKey = CryptoJS.AES.decrypt(this.acct.sk, token + this.acct.salt);
-    if (decKey.sigBytes !== 88) throw Error("Incorrect Token");
+  async decryptKey() {
+    const decKey = CryptoJS.AES.decrypt(this.acct.sk, this.token);
+    if (decKey.sigBytes !== 88) {
+      this.token = undefined;
+      throw Error("Incorrect Token");
+    }
     const key = Buffer.from(decKey.toString(CryptoJS.enc.Utf8), "base64");
     return key;
   }
@@ -82,22 +91,25 @@ Account already exists. Overwrite?`)
     if (!this.acct) {
       throw Error("No Account Exists");
     }
-    const token = await this.getToken(password);
-    const key = await this.decryptKey(token);
+    await this.unlock(password);
+    const key = await this.decryptKey();
     const mnemonic = algosdk.mnemonicFromSeed(key.subarray(0, 32));
     return mnemonic;
   }
 
-  async signTxn(token: string, txns: algosdk.Transaction[]) {
-    const key = await this.decryptKey(token);
-    const signedTxns = txns.map((txn) => algosdk.signTransaction(txn, key));
-    return signedTxns;
+  async txnSigner(txnGroup: algosdk.Transaction[], indexesToSign: number[]) {
+    const key = await this.decryptKey();
+    const signedTxns = txnGroup.map((txn, idx) =>
+      indexesToSign.includes(idx) ? algosdk.signTransaction(txn, key) : null
+    );
+    return signedTxns.map((stxn) => stxn.blob);
   }
 
   clearAcct() {
     clear("keyval");
     this.acctInfo = undefined;
     this.acct = undefined;
+    this.token = undefined;
   }
 }
 
