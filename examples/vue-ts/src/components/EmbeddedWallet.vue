@@ -64,9 +64,8 @@
     <v-row>
       <v-col>
         <v-btn
-          text="Unlock"
-          @click="unlock()"
-          :disabled="!wallet.acct || !wallet.isLocked()"
+          :text="wallet.isLocked() ? 'Unlock' : 'Lock'"
+          @click="wallet.isLocked() ? unlock() : lock()"
         />
       </v-col>
       <v-col>
@@ -112,6 +111,7 @@
 </template>
 
 <script setup lang="ts">
+import { AlgorandClient, microAlgos } from "@algorandfoundation/algokit-utils";
 import algosdk from "algosdk";
 import Wallet from "embedded-algo-wallet";
 import { computed, onMounted, reactive, ref } from "vue";
@@ -137,22 +137,25 @@ const mnemonicAcct = computed(() => {
 const mnemonicHint = computed(() => mnemonicAcct.value?.addr.toString());
 
 const wallet = reactive(new Wallet("testnet"));
+const algorand = AlgorandClient.fromClients({
+  algod: wallet.algod as algosdk.Algodv2,
+});
 
 onMounted(async () => {
   await wallet.startup();
 });
 
-async function newWallet() {
+function newWallet() {
   showPass.value = true;
   passAction.value = "new";
 }
 
-async function importWallet() {
+function importWallet() {
   showPass.value = true;
   passAction.value = "import";
 }
 
-async function exportWallet() {
+function exportWallet() {
   showPass.value = true;
   passAction.value = "export";
 }
@@ -161,9 +164,13 @@ function clearWallet() {
   wallet.clearAcct();
 }
 
-async function unlock() {
+function unlock() {
   showPass.value = true;
   passAction.value = "token";
+}
+
+function lock() {
+  wallet.lock();
 }
 
 async function handlePassword() {
@@ -198,22 +205,20 @@ async function handlePassword() {
 }
 
 async function testTxn() {
-  const suggestedParams = await wallet.algod.getTransactionParams().do();
-  const txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-    sender: wallet.acct.addr,
-    receiver: wallet.acct.addr,
-    amount: 0,
-    suggestedParams,
-  });
-  const signedTxns = await wallet.txnSigner([txn], [0]);
-  await wallet.algod.sendRawTransaction(signedTxns).do();
-  console.log("Waiting for confirmation...");
-  const resp = await algosdk.waitForConfirmation(
-    wallet.algod as algosdk.Algodv2,
-    txn.txID(),
-    4
-  );
-  console.log("Confirmed in Round: " + resp.confirmedRound);
-  await wallet.getAcctInfo();
+  try {
+    const noteArray = crypto.getRandomValues(new Uint8Array(12));
+    const note = Buffer.from(noteArray).toString("base64");
+    const result = await algorand.send.payment({
+      sender: wallet.acct.addr,
+      receiver: wallet.acct.addr,
+      amount: microAlgos(0),
+      signer: wallet.signer,
+      note,
+    });
+    console.log("Confirmed in round " + result.confirmation.confirmedRound);
+    await wallet.refresh();
+  } catch (err: any) {
+    console.error(err.message);
+  }
 }
 </script>

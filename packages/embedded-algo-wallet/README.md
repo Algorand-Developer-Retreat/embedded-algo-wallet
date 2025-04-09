@@ -1,40 +1,78 @@
-# Embedded Algorand Wallet
+# embedded-algo-wallet
+
+A minimal TS package to embed a hot wallet into a dApp
+
+**WARNING: You should not be storing private keys for wallets that hold large monetary values. Browser storage is inherently less secure than other methods. This library is intended mainly for burner/hot wallets.**
+
+## Overview
+
+This library is inteded to help with storing private keys in web applications that use the Algorand blockchain but prefer to simplify the signing process to button presses instead of the usual wallet signing method.
+
+This approach should be used only with accounts generated for the sole purpose of usage inside your application.
 
 ## Initialize
 
 ```ts
-const wallet = new Wallet("testnet");
-await wallet.startup();
+const wallet = new Wallet("testnet"); // "localnet" | "testnet" | "mainnet" | "voimain"
+
+await wallet.startup(); // Required after instantiation
 ```
 
-## Create Account if needed and Get Token
+## Create Account
 
 ```ts
-if (wallet.acct) {
-  token = await wallet.getToken(password);
-} else {
-  token = await wallet.createAcct(password); // optionally pass a mnemonic to import a known account
-}
+await wallet.createAcct(password); // New account
 
-console.log(wallet.acct.addr);
-console.log(Number(wallet.acctInfo.amount) / 10 ** 6);
+await wallet.createAcct(password, mnemonic); // Import an existing account
 ```
 
-## Test Transaction
+## Lock/Unlock Wallet
 
 ```ts
-const suggestedParams = await wallet.algod.getTransactionParams().do();
-const txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+wallet.lock(); // Lock
+
+await wallet.unlock(password); // Unlock
+
+console.log("Locked Status:", wallet.isLocked()); // true/false
+```
+
+## Wallet Details
+
+```ts
+wallet.refresh(); // Refresh Account Info
+
+console.log("Address:", wallet.acct.addr);
+console.log("Balance:", Number(wallet.acctInfo.amount) / 10 ** 6);
+```
+
+## Export Mnemonic
+
+```ts
+console.log(await wallet.exportAcct(password));
+```
+
+## Example Transaction using `signer`
+
+```ts
+const algorand = AlgorandClient.fromClients({
+  algod: wallet.algod as algosdk.Algodv2,
+});
+
+const result = await algorand.send.payment({
   sender: wallet.acct.addr,
   receiver: wallet.acct.addr,
-  amount: 0,
-  suggestedParams,
+  amount: microAlgos(0),
+  signer: wallet.signer,
 });
-const signedTxns = await wallet.signTxn(token.value, [txn]);
-await wallet.algod.sendRawTransaction(signedTxns.map((stxn) => stxn.blob)).do();
-console.log("Waiting for confirmation...");
-await algosdk.waitForConfirmation(wallet.algod, signedTxns[0].txID, 4);
 
-await wallet.getAcctInfo();
-console.log(Number(wallet.acctInfo.amount) / 10 ** 6);
+console.log("Confirmed in round " + result.confirmation.confirmedRound);
+await wallet.refresh();
+```
+
+## Clear Account
+
+**Use with caution or not at all! All key data is cleared from storage.**
+
+```ts
+wallet.clearAcct();
 ```
