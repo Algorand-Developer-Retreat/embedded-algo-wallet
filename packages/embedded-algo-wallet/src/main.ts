@@ -1,13 +1,6 @@
 import algosdk from "algosdk";
 import configs from "./config.json";
-import { clear, get, set } from "./dbWallet";
-
-export interface Acct {
-  addr: string;
-  keyData: ArrayBuffer;
-  salt: Uint8Array;
-  iv: Uint8Array;
-}
+import { Acct, clear, get, set } from "./dbWallet";
 
 export interface Config {
   algod: {

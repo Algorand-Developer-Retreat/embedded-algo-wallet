@@ -1,9 +1,16 @@
 import { DBSchema, StoreKey, StoreNames, openDB } from "idb";
 
+export interface Acct {
+  addr: string;
+  keyData: ArrayBuffer;
+  salt: Uint8Array;
+  iv: Uint8Array;
+}
+
 interface WalletDB extends DBSchema {
   keyval: {
-    key: string;
-    value: any;
+    key: "acct";
+    value: Acct;
   };
 }
 
@@ -27,7 +34,7 @@ export async function getAll(storeName: StoreNames<WalletDB>) {
 export async function set(
   storeName: StoreNames<WalletDB>,
   key: StoreKey<WalletDB, StoreNames<WalletDB>> | undefined,
-  val: any
+  val: Acct
 ) {
   return (await dbWallet).put(storeName, val, key);
 }
